@@ -105,14 +105,32 @@ app.post("/", (req, res) => {
 app.post("/delete", function(req, res){
     //console.log(req.body.checkbox);
     const checkedItemId = req.body.checkbox;
-    Item.findByIdAndRemove(checkedItemId, function(err){
-        if(!err){
-            console.log("Successfully deleted item from DB!")
-            res.redirect("/");
-        } else {
-            console.log(err);
-        }
-    });
+    const listTitle = req.body.listTitle;
+    
+    if (listTitle === "Today"){
+        Item.findByIdAndRemove(checkedItemId, function(err){
+            if(!err){
+                console.log("Successfully deleted item from DB!")
+                res.redirect("/");
+            } else {
+                console.log(err);
+            }
+        });
+    } else {
+        //deleting from a custom route
+        List.findOneAndUpdate(
+            {name : listTitle}, 
+            {$pull : {items : {_id : checkedItemId}}}, 
+            function(err , foundList){
+                if(!err){
+                    res.redirect("/" + listTitle)
+                }
+            });
+    }
+
+
+
+    
 });
 
 //Enabling custom route
@@ -138,13 +156,6 @@ app.get("/:customListName", function(req, res){
     });
     
 });
-
-
-
-
-
-
-
 
 
 
