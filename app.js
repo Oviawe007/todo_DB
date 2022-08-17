@@ -1,9 +1,9 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require ('mongoose');
+const _ = require('lodash');
 
-
-mongoose.connect("mongodb://localhost:27017/todoListDB", {useNewUrlParser: true})
+mongoose.connect("mongodb://localhost:27017/todoListDB", {useNewUrlParser: true});
 
 const ItemsSchema = {
     name : String
@@ -11,6 +11,8 @@ const ItemsSchema = {
 
 const Item = mongoose.model("Item", ItemsSchema);
 
+//default items creation.
+//
 const item1 = new Item ({
     name : "Welcome to your Todo App"
 });
@@ -24,6 +26,14 @@ const item3 = new Item ({
 });
 
 const defaultItems = [item1,item2,item3];
+
+//creating a custom route
+const listSchema = {
+    name : String,
+    items : [ItemsSchema]
+}
+
+const List = mongoose.model("List", listSchema);
 
 
 
@@ -65,13 +75,30 @@ app.get('/', (req, res) => {
 app.post("/", (req, res) => {
    // console.log(req.body)
     const itemName = req.body.newItem;
+    const listName = req.body.list;
 
     const item = new Item ({
         name : itemName
     });
+    //console.log(listName);
+    
+    if (listName === "Today"){
+        item.save();
+        res.redirect('/'); 
+    } else {
+        List.findOne({name : listName}, function(err, foundList){
+            if(!err){
+                foundList.items.push(item);
+                foundList.save();
+                res.redirect("/" + listName);
+                //console.log(foundList)
+            }
+            
+        });
 
-    item.save();
-    res.redirect('/'); 
+    }
+
+    
 });
 
 
@@ -88,26 +115,40 @@ app.post("/delete", function(req, res){
     });
 });
 
-app.get("/work", function(req, res){
+//Enabling custom route
+//
+app.get("/:customListName", function(req, res){
+    const customListName = _.capitalize(req.params.customListName);
+    //console.log(customListName)
 
-    res.render("list", {listTitle: "Work List",newItems : works});
+    List.findOne({name : customListName}, function(err, foundItem){
+        if (!err){
+            if (!foundItem){
+                const list = new List({
+                    name : customListName,
+                    items : defaultItems
+                });
+                list.save();
+                res.redirect("/" + customListName);
+
+            } else {
+                res.render("list",{listTitle : foundItem.name , newItems : foundItem.items});
+            }
+        }
+    });
+    
 });
 
-app.post("/work", function(req, res){
-    let item = req.body.newItem;
-    works.push(item);
-    res.redirect("/work")
-});
 
-app.get("/place", function(req, res){
-    res.render("list",{listTitle: "Place List",newItems : places})
-});
 
-app.post("/place", function(req, res){
-    let item = req.body.newItem;
-    places.push(item);
-    res.redirect("/place");
-});
+
+
+
+
+
+
+
+
 
 app.get("/about", function(req, res){
     res.render("about");
